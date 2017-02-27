@@ -1,6 +1,7 @@
 # Kiwi人脸跟踪SDK快速集成指南(iOS)
 
 kiwi人脸跟踪SDK，主要功能包括：
+
 - 静态图片的人脸以及关键点位置检测
 - 68个人脸关键点的实时检测与跟踪（单人脸/多人脸）
 - 美颜、哈哈镜等实时滤镜功能
@@ -33,7 +34,7 @@ kiwi人脸跟踪SDK，主要功能包括：
 
 #### 编译代码示例
 
-1. 用XCode打开demo工程文件(OpenLive.xcodeproj)。代码包含以下目录结构
+1. 用XCode打开demo工程文件(PLMediaStreamingKitDemo)。代码包含以下目录结构
 
   ![](images/ios-project.jpg)
 
@@ -43,7 +44,7 @@ kiwi人脸跟踪SDK，主要功能包括：
 
 ![](images/31.pic_hd.jpg) | ![](images/33.pic_hd.jpg) |
 
-p.s. 该示例只支持真机，不支持模拟器。编译完成后，即可运行。
+p.s. 该示例只支持在真机上实现功能，不支持模拟器。编译完成后，即可运行。
 
 
 ## 具体集成步骤
@@ -86,11 +87,11 @@ p.s. 该示例只支持真机，不支持模拟器。编译完成后，即可运
 
 #### 第三步：部署工程
 
-1. 导入 libKiwiFaceSDK.a 文件和所有包含的头文件、实现文件、资源文件。
+1. 导入 libKiwiFaceSDK.a 文件和所有包含的头文件、实现文件、资源文件。（我们提供了两种libKiwiFaceSDK.a文件。libKiwiFaceSDK.a同时支持模拟器与真机，供开发调试使用。libKiwiFaceSDK_release.a仅支持真机，供发布使用。）
 
   ![](images/KiwiFaceSDK.jpg)
 
-2. 导入Tracker 人脸捕捉的SDK包和StickerManager。
+2. 导入Tracker 人脸捕捉的SDK包和StickerManager。（我们提供了两种libfaceTrackerSDK.a文件。libfaceTrackerSDK_lic.a同时支持模拟器与真机，供开发调试使用。libfaceTrackerSDK_release.a仅支持真机，供发布使用。）
 
   ![](images/Tracker.jpg)
 
@@ -100,7 +101,7 @@ p.s. 该示例只支持真机，不支持模拟器。编译完成后，即可运
 
   ![](images/target-settings.png)
 
-3. 导入GPUImage，用于视频渲染
+3. 导入GPUImage，用于视频渲染（我们提供了两种libGPUImage.a文件。libGPUImage.a同时支持模拟器与真机，供开发调试使用。libGPUImage_release.a仅支持真机，供发布使用。）
 4. 如有需要，导入libyuv
 
   sdk视频帧的渲染暂时只支持NV21格式的传入 如果应用视频帧是YUV或者其他视频流类型 需要导入视频流格式的转换类。
@@ -132,7 +133,8 @@ p.s. 该示例只支持真机，不支持模拟器。编译完成后，即可运
   |—StickerConfig.json（总配置文件）
   ```
   程序靠读取在stickers文件夹下的StickerConfig.json显示相应的贴纸和图标。
-
+  
+注意，使用贴纸云，需要在Info.plist中加入App Transport Security Settings字段，并将Allow Arbitrary Loads设置为YES。
   __具体的json文件格式如下：__
 
   StickerConfig.json
@@ -176,19 +178,17 @@ p.s. 该示例只支持真机，不支持模拟器。编译完成后，即可运
 
 ```c
 /* 获得SDK操作类的实例对象 */
-self.kiwiSdk = [KiwiFaceSDK sharedManager];
+self.kwSdkUI = [KiwiFaceSDK_UI shareManagerUI];
 /* 设置SDK内置UI的 ViewController 如果不用内置UI 不用设置 */
-[self.kiwiSdk setViewDelegate:self];
+[self.kwSdkUI setViewDelegate:self];
 /* 初始化SDK 一些渲染对象以及初始参数 */
-[self.kiwiSdk initSdk];
+[self.kwSdkUI.kwSdk initSdk];
 /* 如果使用内置UI 该属性是判断是否清除原有项目的页面UI 如果原有UI功能少 可以用内置UI 替代 一般来说用不到 */
-self.kiwiSdk.isClearOldUI = false;
+self.kwSdkUI.isClearOldUI = NO;
  /* 初始化内置UI */
-[self.kiwiSdk initSDKUI];
-渲染视频帧，在每一帧视频代理函数中调用
-KiwiFaceSDK *kwSdk = [KiwiFaceSDK sharedManager];
-/* 判断内置UI 自适应横竖屏*/
-[kwSdk resetScreemMode];
+[self.kwSdkUI initSDKUI];
+ /* 渲染视频帧，在每一帧视频代理函数中调用 */
+self.kwSdkUI.kwSdk = [KiwiFaceSDK sharedManager];
 /*
 对每一帧的视频图像进行人脸捕捉 并对当前选择的滤镜进行视频帧渲染
 pixelBuffer：每一帧的像素流
@@ -296,27 +296,29 @@ mirrored： 是否是镜像
 
 * 增加特定滤镜，进行渲染：
 
-  在 sdk入口类中，有一个类型为FTRenderer的渲染类，由他来控制滤镜的增加。
+  在 sdk入口类中，有一个类型为KWRenderer的渲染类，由他来控制滤镜的增加。
+  
   ```
-	[KiwiFaceSDK.FTRenderer addFilter: GPUImageOutput<GPUImageInput, FTRenderProtocol> *];
+  [KiwiFaceSDK.KWRenderer addFilter: GPUImageOutput<GPUImageInput, KWRenderProtocol> *];
   ```
-  滤镜对象必须遵守GPUImageInput和FTRenderProtocol两个协议才能正常被人脸捕捉和渲染。
+  滤镜对象必须遵守GPUImageInput和KWRenderProtocol两个协议才能正常被人脸捕捉和渲染。
 
 * 删除特定滤镜，停止渲染：
-  ```
-  [KiwiFaceSDK.FTRenderer removeFilter: GPUImageOutput<GPUImageInput, FTRenderProtocol> *];
-  ```
 
+  ```
+  [KiwiFaceSDK.KWRenderer removeFilter: GPUImageOutput<GPUImageInput, KWRenderProtocol> *];
+  ```
 * 人脸捕捉之后，在渲染视频帧之前可以对每一帧图像做自定义处理的回调block：
+
   ```
   typedef void (^RenderAndGetFacePointsBlock)(unsigned char *pixels, int format, int width, int height,result_68_t *p_result, int rstNum, int orientation,int faceNum);
-	//block属性
-	@property (nonatomic, copy)RenderAndGetFacePointsBlock kwRenderBlock;
+  //block属性
+  @property (nonatomic, copy)RenderAndGetFacePointsBlock kwRenderBlock;
   ```
-	block 回调用于在人脸捕捉之后，渲染之前，可以对视频帧进行自定已处理的接口。Block的3个参数可供处理和使用：
-	- result ：人脸坐标集合 （可能是多张人脸 是二维数组）
-	- faceNum ：捕捉到的人脸数量
-	- pixelBuffer：单帧的像素流
+  block 回调用于在人脸捕捉之后，渲染之前，可以对视频帧进行自定已处理的接口。Block的3个参数可供处理和使用：
+  - result ：人脸坐标集合 （可能是多张人脸 是二维数组）
+  - faceNum ：捕捉到的人脸数量
+  - pixelBuffer：单帧的像素流
 
 
 ###### 释放内存
@@ -324,12 +326,5 @@ mirrored： 是否是镜像
 我们建议在离开页面的时候释放内存
 
 ```c
-(void)dealloc
-{
-    destory(); //释放 tracker
-    [(KWStickerRenderer *)self.ftSdk.filters[1] setSticker:nil]; //释放贴纸
-    [self.ftSdk.renderer removeAllFilters]; //去除所有滤镜
-    self.ftSdk.renderer = nil; //释放 渲染类
-    self.ftSdk = nil; //释放SDK
-}
+[KiwiFaceSDK releaseManager];
 ```
